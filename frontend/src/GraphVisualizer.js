@@ -8,8 +8,20 @@ const GraphVisualizer = ({ triplets }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove(); // Clear previous renders
 
-    const width = 600;
-    const height = 400;
+    const width = 2000;
+    const height = 1000;
+
+    // Create the main group that we will zoom and pan
+    const mainGroup = svg.append("g");
+
+    // Set up zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 5]) // Allow zoom from 10% to 500%
+      .on("zoom", (event) => {
+        mainGroup.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
 
     // Convert triplets into nodes and links
     const nodes = [];
@@ -25,9 +37,10 @@ const GraphVisualizer = ({ triplets }) => {
 
     // Create the simulation
     const simulation = d3.forceSimulation(uniqueNodes)
-      .force('link', d3.forceLink(links).id(d => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2));
+      .force('link', d3.forceLink(links).id(d => d.id).distance(150))
+      .force('charge', d3.forceManyBody().strength(-400))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collide', d3.forceCollide().radius(30));
 
     // Add links (edges)
     const link = svg.append('g')
@@ -112,7 +125,7 @@ const GraphVisualizer = ({ triplets }) => {
     }
   }, [triplets]);
 
-  return <svg ref={svgRef} width={600} height={400}></svg>;
+  return <svg ref={svgRef} width={2000} height={1000}></svg>;
 };
 
 export default GraphVisualizer;
