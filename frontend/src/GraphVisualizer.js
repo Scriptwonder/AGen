@@ -8,20 +8,40 @@ const GraphVisualizer = ({ triplets }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove(); // Clear previous renders
 
-    const width = 2000;
-    const height = 1000;
+    // Define a marker for arrows
+    svg.append("defs")
+    .append("marker")
+    .attr("id", "arrowhead")
+    .attr("viewBox", "-0 -5 10 10")
+    .attr("refX", 25) // Adjust the position of the arrow
+    .attr("refY", 0)
+    .attr("orient", "auto")
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("xoverflow", "visible")
+    .append("svg:path")
+    .attr("d", "M 0,-5 L 10 ,0 L 0,5")
+    .attr("fill", "#aaa")
+    .style("stroke", "none");
+
+    const width = window.innerWidth;
+    const height = window.innerHeight * 0.8;
+
+    svg.attr('viewBox', [0, 0, width, height])
+      .attr('preserveAspectRatio', 'xMidYMid meet');
 
     // Create the main group that we will zoom and pan
     const mainGroup = svg.append("g");
 
     // Set up zoom behavior
     const zoom = d3.zoom()
-      .scaleExtent([0.1, 5]) // Allow zoom from 10% to 500%
+      .scaleExtent([0.5, 2]) // Allow zoom from 10% to 500%
       .on("zoom", (event) => {
         mainGroup.attr("transform", event.transform);
       });
 
     svg.call(zoom);
+    //svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(width / 4, height / 4).scale(0.75));
 
     // Convert triplets into nodes and links
     const nodes = [];
@@ -37,21 +57,25 @@ const GraphVisualizer = ({ triplets }) => {
 
     // Create the simulation
     const simulation = d3.forceSimulation(uniqueNodes)
-      .force('link', d3.forceLink(links).id(d => d.id).distance(150))
-      .force('charge', d3.forceManyBody().strength(-400))
+      .force('link', d3.forceLink(links).id(d => d.id).distance(200))
+      .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collide', d3.forceCollide().radius(30));
 
+    simulation.nodes(uniqueNodes);
+    simulation.force('link').links(links);
+
     // Add links (edges)
-    const link = svg.append('g')
-      .attr('stroke', '#aaa')
-      .selectAll('line')
+    const link = mainGroup.append("g")
+      .attr("stroke", "#aaa")
+      .selectAll("line")
       .data(links)
-      .join('line')
-      .attr('stroke-width', 2);
+      .join("line")
+      .attr("stroke-width", 2)
+      .attr("marker-end", "url(#arrowhead)"); // Add arrow marker
 
     // Add nodes (circles)
-    const node = svg.append('g')
+    const node = mainGroup.append('g')
       .attr('stroke', '#fff')
       .attr('stroke-width', 1.5)
       .selectAll('circle')
@@ -62,7 +86,7 @@ const GraphVisualizer = ({ triplets }) => {
       .call(drag(simulation));
 
     // Add text labels for nodes
-    const labels = svg.append('g')
+    const labels = mainGroup.append('g')
       .selectAll('text')
       .data(uniqueNodes)
       .join('text')
@@ -71,7 +95,7 @@ const GraphVisualizer = ({ triplets }) => {
       .text(d => d.id);
 
     // Add relation labels on links
-    const linkLabels = svg.append('g')
+    const linkLabels = mainGroup.append('g')
       .selectAll('text')
       .data(links)
       .join('text')
@@ -123,9 +147,25 @@ const GraphVisualizer = ({ triplets }) => {
         .on('drag', dragged)
         .on('end', dragended);
     }
+
+    // Handle window resize
+    const resizeHandler = () => {
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight * 0.8;
+      svg.attr('viewBox', [0, 0, newWidth, newHeight]);
+      simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
+      simulation.alpha(1).restart();
+    };
+
+    window.addEventListener('resize', resizeHandler);
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('resize', resizeHandler);
+    };
   }, [triplets]);
 
-  return <svg ref={svgRef} width={2000} height={1000}></svg>;
+  return <svg ref={svgRef} width="100%" height="80vh" style={{ border: '1px solid black', margin: '20px auto', display: 'block' }}></svg>;
 };
 
 export default GraphVisualizer;

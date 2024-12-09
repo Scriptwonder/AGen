@@ -10,6 +10,7 @@ import prompts
 import base64
 import textwrap
 import utils
+import cluster
 
 #load_dotenv()
 
@@ -21,6 +22,7 @@ Relation_Set = ""
 Analogy_KGs= []
 class KGFormat(BaseModel):
     concept: str
+    tentative_summaries : list[str]
     summary: str
     knowledge_graph: str
     relation_set: str
@@ -29,14 +31,19 @@ class AnalogyFormat(BaseModel):
     Analogies : list[str]
     Analogies_KnowledgeGraphs: list[str]
     
+class CoreConcepts(BaseModel):
+    core_concepts: list[str]
+    
 class FilteredAnalogyFormat(BaseModel):
     Filtered_Analogies: list[str]
     Filtered_Analogies_Explanation: list[str]
+    Filtered_Analogies_Terminology: list[str]
     Filtered_Analogies_KnowledgeGraphs: list[str]
     
 class FilteredAnalogy(BaseModel):
     concept: list[str]
     summary: list[str]
+    terminology: list[str]
     
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -55,7 +62,7 @@ def add_image(image, role, messages, message):
     ]})
     return General_Msg
     
-def add_message(message, role, messages):
+def add_message(message, role, messages=None):
     General_Msg.append({"role": role, "content": message})
     return General_Msg
 
@@ -70,9 +77,25 @@ def parse_message(model, messages, format):
     General_Msg.append({"role": "system", "content": content.choices[0].message.content})
     #messages.clear()
     return content
+
+def generate_core_meanings(concept):
+    prompt1 = f"""Based on the concept and the previous generated summary, generate the core meanings revolving around the concept: {concept}. For example, with the filter bubble concept, the core meaningful extracted should be "Limited Exposure to Diverse World", "Lack of Transparency", and "Social Media Landscape". Make sure these core meanings are generalizable beyond the summary itself and are the core concepts that are essential to understand the concept. Put the core concepts in the "core_concepts" field."""
+    prompt1 = textwrap.dedent(prompt1).strip()
+    messages = add_message(prompt1, "system", [])
+    result = parse_message("gpt-4o", messages, CoreConcepts)
+    return result.choices[0].message.parsed.core_concepts
+    
+
+def generate_summary(concept):
+    prompt1 = f"""Generate ten tentative knowledge summaries for the concept: {concept} and put the tentative summaries in the "tentative_summaries" field.. After the generation, summarize all the tentative summaries and put it in the "summary" field. """
+    prompt1 = textwrap.dedent(prompt1).strip()
+    messages = add_message(prompt1, "user", [])
+    res = send_message("gpt-4o", messages).choices[0].message.content
+    add_message(res, "user")
+    return res
+    
     
 def generate_kg(prompt):
-    prompt1 = f"""Generate a comprehensive knowledge summary for the concept: {prompt}"""
     
     prompt2 = """Provide the knowledge graph for the concept in the form of triplets `entity, relation, entity` based on the previous summary. Focus on the core concepts that is generalizable beyond the summary itself (e.g., terms, events, interactions, theories) and the relationships between these concepts. My job depends on your ability to generate a comprehensive yet concentrated knowledge graph in which each node's out degree is at least three. If I cannot deliver to my boss a high-quality knowledge that they will make a layman fully comprehend the summarized subject itself, I WILL LOSS MY JOB.
 This Knowledge Graph should have a comprehensive structure where most of the nodes are connected together naturally.
@@ -80,35 +103,26 @@ Each triplet will be separated by a new line."""
 
     prompt3 = """Given the triplets, aggregate the similar concepts under one concept name, and replace all the similar concepts name with that one concept name. Prune the trivial entities and relations that do not have strong relation with the concept's deep meaning. Return a revised triplets in the form of triplets `entity, relation, entity`, with each separated by a new line. After that, return all the relation sets in the triplet and put it in the "relation_set" field."""
     
-    prompt1 = textwrap.dedent(prompt1).strip()
     prompt2 = textwrap.dedent(prompt2).strip()
-    
-    messages = add_message(prompts.SYSTEM_INSTRUCTION, "system", [])
-    messages = add_message("You have read Gentner's Structure Mapping theory and Hofstadter's Analogy theory very well and is a master in this field.", "user", messages)
-    send_message("gpt-4o", messages)
-    
-    
-    messages = add_message(prompt1, "user", [])
-    prev_content = send_message("gpt-4o", messages).choices[0].message.content
-    messages = add_message(prev_content, "user", messages)
+    prompt3 = textwrap.dedent(prompt3).strip()
     
     #need to chain previous result
     
     #full_prompt = f"{prompt2}\n\nPrevious Output: {prev_content}"
     #messages = add_message(full_prompt, "user", [])
-    messages = add_message(prompt2, "user", messages)
+    messages = add_message(prompt2, "user")
     prev_content = send_message("gpt-4o", messages).choices[0].message.content
-    messages = add_message(prev_content, "user", messages)
-    
+    add_message(prev_content, "user")
     
     # full_prompt = f"{prompt3}\n\nPrevious Output: {prev_content}"
     # messages = add_message(prompt3, "user", messages)
-    messages = add_message(prompt3, "user", messages)
+    messages = add_message(prompt3, "user")
     result = parse_message("gpt-4o", messages, KGFormat)
     
     return result.choices[0].message.parsed
 
 def generate_analogy_kg(prompt):
+    #Generate knwoledge graphs
     prompt1 = f"""Generate a comprehensive knowledge summary for the concept: {prompt}"""
     
     prompt2 = """Provide the knowledge graph for the concept in the form of triplets `entity, relation, entity` based on the previous summary. Focus on the core concepts that is generalizable beyond the summary itself (e.g., terms, events, interactions, theories) and the relationships between these concepts. My job depends on your ability to generate a comprehensive yet concentrated knowledge graph in which each node's out degree is at least three. If I cannot deliver to my boss a high-quality knowledge that they will make a layman fully comprehend the summarized subject itself, I WILL LOSS MY JOB.
@@ -120,11 +134,6 @@ Each triplet will be separated by a new line."""
     prompt1 = textwrap.dedent(prompt1).strip()
     prompt2 = textwrap.dedent(prompt2).strip()
     
-    messages = add_message(prompts.SYSTEM_INSTRUCTION, "system", [])
-    messages = add_message("You have read Gentner's Structure Mapping theory and Hofstadter's Analogy theory very well and is a master in this field.", "user", messages)
-    send_message("gpt-4o", messages)
-    
-    
     messages = add_message(prompt1, "user", [])
     prev_content = send_message("gpt-4o", messages).choices[0].message.content
     messages = add_message(prev_content, "user", messages)
@@ -146,37 +155,19 @@ Each triplet will be separated by a new line."""
     
     return result.choices[0].message.parsed
 
-def generate_analogy():
-    prompt1 = """
-    Take this step-by-step recipe for analogy generation:
-    
-    1. With the given concept and summary, generate ten analogies based on your understanding, from different perspectives, such as computer science, philosophy, biology, and K12 education. Put them in the "Analogies" field.
-    2. For each analogy, combined with the generated Concept Knowledge Graph to coin a knowledge graph. The generation should adhere to the structure of the Concept Knowledge Graph, while maintaining its own terminology and concepts. Each Knowledge graph should be comprehensive, self-contained, and concise, formatted as triplets `entity, relation, entity`, and separated by a new line. Put the triplets in the "Analogies_KnowledgeGraphs" field. Make sure to include any prior knowledge that is necessary to understand the analogy but not part of the original summary; include the connectivity of the resulting knowledge graph by inserting bridging concepts and relations to connect as many nodes as possible.
-    """
-    
-    prompt2 = """
-    Take this step-by-step recipe for analogy filtering:
-    
-    1. Based on the given analogies, filter, rank, and find the top three analogies that has the most similar structure as the given original concept and semantically different from each other. Put their concepts in the "Filtered_Analogies" field.
-    2. For each analogy, turn it into a knowledge graph. Starting only from a summary of the concept, Each Knowledge graph should be comprehensive, self-contained, and concise, formatted as triplets `entity, relation, entity`, and separated by a new line. Put the triplets in the "Filtered_Analogies_KnowledgeGraphs" field. Make sure to include any prior knowledge that is necessary to understand the analogy but not part of the original summary; include the connectivity of the resulting knowledge graph by inserting bridging concepts and relations to connect as many nodes as possible. Follow the Given Relation Set to prune the trivial entities and relations and keep a more deep relationship graph.
-    """
-    
-    messages = add_message(prompts.SYSTEM_INSTRUCTION_ANALOGY, "system", General_Msg)
-    messages = add_message(prompt1, "user", messages)
-    prev_content = parse_message("gpt-4o", messages, AnalogyFormat).choices[0].message.content
-    
-    #chain previous result
-    #full_prompt = f"{prompt2}\n\nPrevious Output: {prev_content}"
-    messages = add_message("This is the given relation set: " + Relation_Set, "system", General_Msg)
-    messages = add_message(prompt2, "user", messages)
-    result = parse_message("gpt-4o", General_Msg, FilteredAnalogyFormat)
-    return result.choices[0].message.parsed
+def generate_kg_n_times(prompt, n):
+    knowledge_graphs = []
+    for i in range(n):
+        result = generate_kg(prompt)
+        knowledge_graphs.append(result.knowledge_graph)
+    combined_kg = cluster.construct_best_knowledge(knowledge_graphs)
+    return combined_kg
    
-def generate_analogy_separate():
-    prompt1 = """
+def generate_analogy_separate(bg):
+    prompt1 = f"""
     Take this step-by-step recipe for analogy generation:
     
-    1. With the given concept and summary, generate ten analogies based on your understanding, from different perspectives, such as computer science, philosophy, biology, and K12 education. Put them in the "Analogies" field.
+    1. With the given concept and summary, generate ten analogies based on your understanding, from different perspectives, which can be related to the background information {bg}. Put them in the "Analogies" field.
     2. For each analogy, combined with the generated Concept Knowledge Graph to coin a knowledge graph. The generation should adhere to the structure of the Concept Knowledge Graph, while maintaining its own terminology and concepts. Each Knowledge graph should be comprehensive, self-contained, and concise, formatted as triplets `entity, relation, entity`, and separated by a new line. Put the triplets in the "Analogies_KnowledgeGraphs" field. Make sure to include any prior knowledge that is necessary to understand the analogy but not part of the original summary; include the connectivity of the resulting knowledge graph by inserting bridging concepts and relations to connect as many nodes as possible.
     """
     
@@ -184,6 +175,7 @@ def generate_analogy_separate():
     Take this step-by-step recipe for analogy filtering:
     
     1. Based on the given analogies, filter, rank, and find the top three analogies that has the most similar structure as the given original concept and semantically different from each other. Put their concepts in the "concept" field and their detailed summaries in the "summary" field.
+    2. For each analogy, extract the words that resemble the analogy(why are they analogous) and put them in the "terminology" field.
     """
     
     messages = add_message(prompts.SYSTEM_INSTRUCTION_ANALOGY, "system", General_Msg)
@@ -230,6 +222,7 @@ def draw_kg_list(kgs):
     
 def set_up():
     add_message(prompts.SYSTEM_INSTRUCTION, "system", General_Msg)
+    add_message("You have read Gentner's Structure Mapping theory and Hofstadter's Analogy theory very well and is a master in this field.", "user", General_Msg)
     
     #some image few-shot
     add_image(encode_image("fig1.png"), "user", General_Msg, "Example of Structure Mapping")
@@ -247,25 +240,29 @@ def concept_gen(concept):
     global Relation_Set
     global Analogy_KG
     set_up()
+    generate_summary(concept)
     event = generate_kg(concept)
+    #graph = generate_kg_n_times(concept, 2)
+    #event.knowledge_graph = graph
     Relation_Set += event.relation_set
     Analogy_KG = event.knowledge_graph
     print(event)
     return event.concept, event.summary, event.knowledge_graph
 
-def analogy_gen():
+def analogy_gen(bg):
     # analogies_kg = generate_analogy()
     # clean_up()
     # return analogies_kg.Filtered_Analogies, analogies_kg.Filtered_Analogies_Explanation, analogies_kg.Filtered_Analogies_KnowledgeGraphs
     global Analogy_KG
-    analogies = generate_analogy_separate()
+    analogies = generate_analogy_separate(bg)
     for i in range(0, len(analogies.concept)):
         event = generate_analogy_kg(analogies.concept[i])
         Analogy_KGs.append(event.knowledge_graph)
+    
         #eval_scores.append(calculate_graph_edit_distance(Analogy_KG, event.knowledge_graph))
         #add evaluation to the knowledge graph
         
-    return analogies.concept, analogies.summary, Analogy_KGs
+    return analogies.concept, analogies.summary, Analogy_KGs, analogies.terminology
 
 def calculate_graph_edit_distance_by_index(analogy_index):
     global Analogy_KG
@@ -279,8 +276,8 @@ def calculate_graph_edit_distance_optimized(triplets1, triplets2):
     for v in similarity.optimize_graph_edit_distance(nxg1, nxg2):
         print("loop" + str(v))
         minv = v
-    print(minv)
     return minv
+
 def calculate_graph_edit_distance(triplets1, triplets2):
     G1 = nx.DiGraph()
     for triplet in triplets1.split('\n'):
@@ -301,19 +298,20 @@ def calculate_graph_edit_distance(triplets1, triplets2):
     return nx.graph_edit_distance(G1, G2)
    # return similarity.optimize_graph_edit_distance(G1, G2)
     
+
+
+
 def clean_up():
     global General_Msg
     global Relation_Set
     General_Msg.clear()
     Relation_Set = ""
     
-    
 if __name__ == "__main__":
     concept = "Matrix Factorization"
     # concept_gen(concept)
     # result = analogy_gen()
     # print(result)
-    
     
     #generation for KG
     #event = generate_kg(concept)
@@ -342,19 +340,6 @@ if __name__ == "__main__":
     #print(analogies_kg)
     # kernel = gk.graph_from_networkx(nxg)
     # gk.GraphKernel("random_walk", with_labels=True).fit_transform([kernel])
-    
-
-
-
-
-
-
-
-
-
-
-
-
 
 # def draw_kg_list(kgs):
 #      fig, axes = plt.subplots(2,2)
@@ -431,3 +416,31 @@ if __name__ == "__main__":
 #         if result is None:
 #             return f"Prompt {i} failed to generate a response."
 #     return result
+
+
+# def generate_analogy(background_info=""):
+#     prompt1 = f"""
+#     Take this step-by-step recipe for analogy generation:
+    
+#     1. With the given concept and summary, generate ten analogies based on your understanding. The analogy should be tied to user's background information: {background_info}. Put them in the "Analogies" field.
+#     2. For each analogy, combined with the generated Concept Knowledge Graph to coin a knowledge graph. The generation should adhere to the structure of the Concept Knowledge Graph, while maintaining its own terminology and concepts. Each Knowledge graph should be comprehensive, self-contained, and concise, formatted as triplets `entity, relation, entity`, and separated by a new line. Put the triplets in the "Analogies_KnowledgeGraphs" field. Make sure to include any prior knowledge that is necessary to understand the analogy but not part of the original summary; include the connectivity of the resulting knowledge graph by inserting bridging concepts and relations to connect as many nodes as possible. Do not include the original concept in the graph.
+#     """
+    
+#     prompt2 = """
+#     Take this step-by-step recipe for analogy filtering:
+    
+#     1. Based on the given analogies, rate how helpful they are in helping the users understand the original concept, from 0 to 10.
+#     2. Based on the ratings, rank and find the top three analogies that has the most similar structure as the given original concept and semantically different from each other. Put their concepts in the "Filtered_Analogies" field.
+#     3. For each analogy, turn it into a knowledge graph. Starting only from a summary of the concept, Each Knowledge graph should be comprehensive, self-contained, and concise, formatted as triplets `entity, relation, entity`, and separated by a new line. Put the triplets in the "Filtered_Analogies_KnowledgeGraphs" field. Make sure to include any prior knowledge that is necessary to understand the analogy but not part of the original summary; include the connectivity of the resulting knowledge graph by inserting bridging concepts and relations to connect as many nodes as possible. Follow the Given Relation Set to prune the trivial entities and relations and keep a more deep relationship graph.
+#     """
+    
+#     messages = add_message(prompts.SYSTEM_INSTRUCTION_ANALOGY, "system", General_Msg)
+#     messages = add_message(prompt1, "user", messages)
+#     prev_content = parse_message("gpt-4o", messages, AnalogyFormat).choices[0].message.content
+    
+#     #chain previous result
+#     #full_prompt = f"{prompt2}\n\nPrevious Output: {prev_content}"
+#     messages = add_message("This is the given relation set: " + Relation_Set, "system", General_Msg)
+#     messages = add_message(prompt2, "user", messages)
+#     result = parse_message("gpt-4o", General_Msg, FilteredAnalogyFormat)
+#     return result.choices[0].message.parsed

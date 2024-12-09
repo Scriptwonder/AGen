@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import analogyGen as AnalogyGen
+import conceptGraphGen as ConceptGen
 
 app = Flask(__name__)
 
@@ -12,20 +13,40 @@ def generate_concept():
     concept = data.get('concept')
     # Add your analogy generation logic here
     concept, summary, knowledge_graph = AnalogyGen.concept_gen(concept)
+    
+    core_concept = AnalogyGen.generate_core_meanings(concept)
     response = {
         "concept": concept,
         "summary": summary,
-        "knowledge_graph": parse_triplets(knowledge_graph)
+        "knowledge_graph": parse_triplets(knowledge_graph),
+        "core_concept": core_concept
     }
     print(response)
     return jsonify(response)
 
+@app.route('/get-graph', methods=['POST'])
+def get_graph():
+    data = request.get_json()
+    concept = data.get('concept') # Parse input
+    bg = data.get('bg')
+
+    graph_data= ConceptGen.main(concept, bg)
+    return jsonify(graph_data)
+
+@app.route('/generate-analogy-graph', methods=['POST'])
+def generate_analogy_graph():
+    data = request.get_json()
+    
+    graph_data = ConceptGen.generate_analogy_graphs_new()
+    return jsonify(graph_data)
+
 @app.route('/generate-analogy', methods=['POST'])
 def generate_analogy():
     data = request.get_json()
+    bg = data.get('bg')
 
     # Generate analogies for the concept
-    analogy_results, analogy_summaries, analogy_kgs = AnalogyGen.analogy_gen()  # Assuming this function generates analogies as well
+    analogy_results, analogy_summaries, analogy_kgs, analogy_terminologies = AnalogyGen.analogy_gen(bg)  # Assuming this function generates analogies as well
 
     print(analogy_kgs)
     # Prepare the response
@@ -33,6 +54,7 @@ def generate_analogy():
         "analogies_concepts": analogy_results,
         "analogies_summaries": analogy_summaries,
         "analogies_kgs": [parse_triplets(kg) for kg in analogy_kgs],
+        "analogies_terminologies": analogy_terminologies
         #"analogies_score": eval_score
     }
     print(response)
@@ -72,6 +94,8 @@ def parse_triplets(graph_text):
             else:
                 print(f"Invalid triplet: {line}")
     return triplets
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
