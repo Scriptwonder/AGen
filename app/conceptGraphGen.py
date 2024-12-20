@@ -9,8 +9,8 @@ import json
 import networkx as nx
 from pyvis.network import Network
 
-SUBJECTS = "Quantum Superposition"
-AUDIENCE = "College Students"
+SUBJECTS = "Matrix Factorization"
+AUDIENCE = "Undergraduate Students"
 N=5
 
 PK = None
