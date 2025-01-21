@@ -17,6 +17,17 @@ def send_message(model=MODEL, messages=[], n=1):
     content = client.chat.completions.create(model=model, messages=messages, temperature=0.0)
     return content
 
-def parse_message(format, messages=[], model=MODEL):
-    content = client.beta.chat.completions.parse(model=model, messages=messages, response_format=format, temperature=0.0)
+def parse_message(format, messages=[], model=MODEL, n=1):
+    content = client.beta.chat.completions.parse(model=model, messages=messages, response_format=format, temperature=0.0, n=n)
     return content
+
+def generate_image(prompt):
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024",
+        quality="standard",
+        n=1
+    )
+    return response.data[0].url
+

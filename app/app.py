@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import analogyGen as AnalogyGen
 import conceptGraphGen as ConceptGen
+import json 
 
 app = Flask(__name__)
 
@@ -10,11 +11,11 @@ CORS(app)
 @app.route('/generate-concept', methods=['POST'])
 def generate_concept():
     data = request.json
-    concept = data.get('concept')
+    concept = data.get('concept', '')
     # Add your analogy generation logic here
     concept, summary, knowledge_graph = AnalogyGen.concept_gen(concept)
-    
     core_concept = AnalogyGen.generate_core_meanings(concept)
+    
     response = {
         "concept": concept,
         "summary": summary,
@@ -40,26 +41,56 @@ def generate_analogy_graph():
     graph_data = ConceptGen.generate_analogy_graphs_new()
     return jsonify(graph_data)
 
+
+
 @app.route('/generate-analogy', methods=['POST'])
 def generate_analogy():
-    data = request.get_json()
-    bg = data.get('bg')
+    data = request.json
+    concept = data.get('concept', '')
+    audience = data.get('audience', '')
+    if not concept:
+        return jsonify({"error": "Concept is required"}), 400
 
-    # Generate analogies for the concept
-    analogy_results, analogy_summaries, analogy_kgs, analogy_terminologies = AnalogyGen.analogy_gen(bg)  # Assuming this function generates analogies as well
+    try:
+        # Generate analogies
+        #analogies, explanations, evaluations, sprompts = AnalogyGen.analogy_gen(concept)
+        
+        analogies, explanations, evaluations, images = ConceptGen.main(concept, audience)
+        
+        # Combine results with image generation
+        analogy_results = []
+        for i in range(len(analogies)):
+            analogy_results.append({
+                "analogy": analogies[i],
+                "explanation": explanations[i],
+                "evaluation": evaluations[i],
+                "image_url": images[i]
+            })
+        print("This step is fine")
+        return jsonify({"analogies": analogy_results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    print(analogy_kgs)
-    # Prepare the response
-    response = {
-        "analogies_concepts": analogy_results,
-        "analogies_summaries": analogy_summaries,
-        "analogies_kgs": [parse_triplets(kg) for kg in analogy_kgs],
-        "analogies_terminologies": analogy_terminologies
-        #"analogies_score": eval_score
-    }
-    print(response)
+# @app.route('/generate-analogy', methods=['POST'])
+# def generate_analogy():
+#     data = request.get_json()
+#     bg = data.get('bg')
 
-    return jsonify(response)
+#     # Generate analogies for the concept
+#     analogy_results, analogy_summaries, analogy_kgs, analogy_terminologies = AnalogyGen.analogy_gen(bg)  # Assuming this function generates analogies as well
+
+#     print(analogy_kgs)
+#     # Prepare the response
+#     response = {
+#         "analogies_concepts": analogy_results,
+#         "analogies_summaries": analogy_summaries,
+#         "analogies_kgs": [parse_triplets(kg) for kg in analogy_kgs],
+#         "analogies_terminologies": analogy_terminologies
+#         #"analogies_score": eval_score
+#     }
+#     print(response)
+
+#     return jsonify(response)
 
 @app.route('/calculate-similarity', methods=['POST'])
 def calculate_similarity():
