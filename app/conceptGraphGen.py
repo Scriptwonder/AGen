@@ -49,6 +49,7 @@ class AnalogyGen(BaseModel):
     Image_Generation_Prompt: str
     
 class AnalogyCluster(BaseModel):
+    Scratch_Pad: str | None
     Analogy: list[str]
     Explanation: list[str]
     Causal_Relationship: list[str]

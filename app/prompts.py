@@ -92,7 +92,7 @@ SAMPLE_BG_PROMPT = textwrap.dedent("""
 """).strip()
 
 COMBINE_PROMPT = textwrap.dedent("""
-    Please combine the following articles about {subject} into one coherent one, while maintaining as such details as possible about the original articles. Make sure it fits into {audience}'s proir knowledge and cognitive level. Remove and Edit if needed.
+    Please combine the following articles about {subject} into one coherent one, while maintaining as such details as possible about the original articles. Make sure it fits into {audience}'s prior knowledge and cognitive level. Remove and Edit if needed.
 
     {articles}
 
@@ -441,32 +441,46 @@ You should extract the source concept "Filter Bubble" and the target concept "Ec
 """).strip()
 
 ANALOGY_PRINCIPLE_PROMPT = textwrap.dedent("""
-You are an educational expert who is very capable of analogical approach to teaching. 
+You are a mentor who loves to use employ analogical learning approach for your teaching.
+
 You will now teach a group of {audience} about the concept of {concept} using analogies. The concepts is accompanied by a combined knowledge summarization {combined_knowledge}.
-You will be provided with the following principles for teaching in an analogical approach:
-1. Use well-understood source analogs to capitalize on prior knowledge.
+
+You will follow principles below for teaching in an analogical approach:
+
+1. Use well-understood source concepts to capitalize on prior knowledge.
 2. Highlight shared causal structure among examples of a structurally defined category using visuospatial, gestural, and verbal supports.
 3. Explain correspondences between semantic information and mathematical operations if teaching math. Discuss conceptual meaning of mathematical operations.
 4. Use presentation style to facilitate comparison and reduce cognitive load of comparison process when appropriate.
-5.Once students have some proficiency with the material, encourage generation of inferences. 
+5. Once students have some proficiency with the material, encourage generation of inferences. 
 
-Given the above principles, generate {n} detailed analogy and explanation tailored for such group. You will also generate an appropriate image generation prompt to help the audience better understand the concept.
+Given the above principles, generate {n} detailed analogy and explanation tailored for such group. Before writing down you analogies, let's think step-by-step the following aspects:
+
+1. Careful reflect about the your audience (i.e., {audience}), pay close attention aspects such as their age, personality, interests, and prior knowledge.
+2. Think about the concept you are trying to teach using analogies (i.e., {concept}), what are some of the connections it has with the audience and who they are.
+3. Following the principles above and your analyses in the previous two steps, generate analogies that are clear, meaningful, and engaging for the audience.
+
 The output format should in the following format:
+
 {{
-    "Analogy": "...",
-    "Explanation": "...",
-    "Causal Relationship": "...",
-    "Image Generation Prompt": "..."
+    "Scratch Pad": str - A scratch pad for you to freely write down your thoughts and ideas.
+    "Analogy": str[] - A list of {n} analogies that helps {audience} understand the concept of {concept}.
+    "Explanation": str[] - A list of {n} expanded analogies, each corresponding to one in the "Analogy" field and at minimum 3 paragraphs long. The expanded analogy should provide a detailed justification explaining the rationale behind the analogy itself, as well as providing a more expansive version of the analogy (potentially requiring higher cognitive level than the intended audience: {audience}) that allow further exploration of the concept itself by building on top of this expanded analogy.
+    "Causal Relationships": str[] - A list of {n} causal relationships that are present in the analogies provided in the "Analogy" field.
 }}
 """).strip()
 
 ANALOGY_FILTER_PROMPT_NEW = textwrap.dedent("""
-You are an education expert who can filter analogies to see if they fit the current audience group: {audience} based on their current knowledge taxonomy {taxonomy}. 
+You are a helpful assistant designed to help me filter analogies.
+
+Given a list of analogies, determine if each of them is suitable for {audience} in an educational setting.
+
 You will be provided with several analogies in the format of {analogies} and you will do the following:
+
 1. Filter the analogies that are not understandable by the audience.
 2. Rank the analogies based on their understandability by te audience.
 
 Return the filtered and ranked analogies in the following format, and make sure the number of analogies is less than or equal to {n}:
+
 {{
     "Analogy": "...",
     "Explanation": "...",
