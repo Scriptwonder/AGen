@@ -54,9 +54,13 @@ def generate_analogy():
     try:
         # Generate analogies
         #analogies, explanations, evaluations, sprompts = AnalogyGen.analogy_gen(concept)
-        
+        print(1)
         analogies, explanations, evaluations, images = ConceptGen.main(concept, audience)
         
+        print(analogies)
+        print(explanations)
+        print(evaluations)
+        print(images)
         # Combine results with image generation
         analogy_results = []
         for i in range(len(analogies)):

@@ -143,7 +143,7 @@ TAXONOMY_PROMPT = textwrap.dedent("""
 
     {knowledge}
 
-    You will express the taxonomy as a JSON object with the following attributes:
+    You will express the taxonomy as a JSON object with the following attributes, with the output token limit of 16384:
 
     {{
         "concepts": A set of strings, each representing a concept within the knowledge.
@@ -477,7 +477,7 @@ Given a list of analogies, determine if each of them is suitable for {audience} 
 You will be provided with several analogies in the format of {analogies} and you will do the following:
 
 1. Filter the analogies that are not understandable by the audience.
-2. Rank the analogies based on their understandability by te audience.
+2. Rank the analogies based on their understandability by the audience.
 
 Return the filtered and ranked analogies in the following format, and make sure the number of analogies is less than or equal to {n}:
 

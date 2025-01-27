@@ -53,80 +53,79 @@ function App() {
     };
 
     return (
-      <div className="app-container">
-          <header className="app-header">
-              <h1>Analogy Generator</h1>
-          </header>
-          <main className="app-main">
-              <div className="input-container">
-                  <input
-                      className="concept-input"
-                      type="text"
-                      placeholder="Enter a concept"
-                      value={concept}
-                      onChange={(e) => setConcept(e.target.value)}
-                  />
-                  <input
-                      className="audience-input"
-                      type="text"
-                      placeholder="Enter an audience"
-                      value={audience}
-                      onChange={(e) => setAudience(e.target.value)}
-                  />
-                  <button 
-                      className={`generate-button ${loading ? 'loading' : ''}`}
-                      onClick={handleGenerateAnalogies} 
-                      disabled={loading}>
-                      {loading ? <span className="spinner"></span> : 'Generate Analogies'}
-                  </button>
-              </div>
+        <div className="app-container">
+            <header className="app-header">
+                <h1>Analogy Generator</h1>
+            </header>
+            <main className="app-main">
+                <div className="layout-container">
+                    <div className="left-panel">
+                        <div className="input-container">
+                            <input
+                                className="concept-input"
+                                type="text"
+                                placeholder="Enter a concept"
+                                value={concept}
+                                onChange={(e) => setConcept(e.target.value)}
+                            />
+                            <input
+                                className="audience-input"
+                                type="text"
+                                placeholder="Enter an audience"
+                                value={audience}
+                                onChange={(e) => setAudience(e.target.value)}
+                            />
+                            <button 
+                                className={`generate-button ${loading ? 'loading' : ''}`}
+                                onClick={handleGenerateAnalogies} 
+                                disabled={loading}>
+                                {loading ? <span className="spinner"></span> : 'Generate Analogies'}
+                            </button>
+                        </div>
 
-              {error && <p className="error-message">{error}</p>}
+                        {error && <p className="error-message">{error}</p>}
 
-              {analogies.length > 0 && (
-                  <div className="analogies-container">
-                      <h2>Generated Analogies</h2>
-                      <ul className="analogies-list">
-                          {analogies.map((analogy, index) => (
-                              <li 
-                                  key={index} 
-                                  className="analogy-item"
-                                  onClick={() => handleSelectAnalogy(index)}>
-                                  Analogy {index + 1}: {analogy.analogy}
-                              </li>
-                          ))}
-                      </ul>
-                  </div>
-              )}
+                        {analogies.length > 0 && (
+                            <div className="analogies-container">
+                                <h2>Generated Analogies</h2>
+                                <ul className="analogies-list">
+                                    {analogies.map((analogy, index) => (
+                                        <li 
+                                            key={index} 
+                                            className="analogy-item"
+                                            onClick={() => handleSelectAnalogy(index)}>
+                                            Analogy {index + 1}: {analogy.analogy}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
 
-              {selectedAnalogy && (
-                  <div className="selected-analogy-container">
-                      <h2>Selected Analogy</h2>
-                      <p><strong>Analogy:</strong> {selectedAnalogy.analogy}</p>
-                      <p><strong>Explanation:</strong> {selectedAnalogy.explanation}</p>
-                      <p><strong>Evaluation:</strong> 
-                      {selectedAnalogy.evaluation.split('\n').map((line, index) => (
-                          <React.Fragment key={index}>
-                              {line}
-                              <br />
-                          </React.Fragment>
-                      ))}
-                      </p>
-                      {selectedAnalogy.image_url && (
-                          <div className="image-container">
-                              <h3>Visual Representation</h3>
-                              <img 
-                                  src={selectedAnalogy.image_url} 
-                                  alt="Analogy Visualization" 
-                                  className="analogy-image" 
-                              />
-                          </div>
-                      )}
-                  </div>
-              )}
-          </main>
-      </div>
-  );
+                    <div className="right-panel">
+                        {selectedAnalogy && (
+                            <div className="selected-analogy-container">
+                                <h2>Selected Analogy</h2>
+                                <p><strong>Text:</strong> {selectedAnalogy.analogy}</p>
+                                <p><strong>Explanation:</strong> {selectedAnalogy.explanation}</p>
+                                <p><strong>Evaluation:</strong> {selectedAnalogy.evaluation}</p>
+                                {selectedAnalogy.image_url && (
+                                    <div className="image-container">
+                                        <h3>Visual Representation</h3>
+                                        <img 
+                                            src={selectedAnalogy.image_url} 
+                                            alt="Analogy Visualization" 
+                                            className="analogy-image" 
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
 }
 
 export default App;
